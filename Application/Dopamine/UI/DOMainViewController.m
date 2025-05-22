@@ -414,4 +414,22 @@
     [self setNeedsUpdateOfHomeIndicatorAutoHidden];
 }
 
+#pragma mark - Auto Jailbreak After Launched
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    
+    // 添加5秒延迟后自动触发
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (weakSelf.jailbreakBtn.enabled) {
+            // 模拟按钮点击事件
+            [weakSelf.jailbreakBtn sendActionsForControlEvents:UIControlEventTouchUpInside];
+        } else {
+            NSLog(@"Jailbreak button is disabled");
+        }
+    });
+}
+
 @end
