@@ -425,6 +425,12 @@
 #pragma mark - Auto Jailbreak After Launched
 
 - (void)performJailbreakAction {
+    //Jailbreak Button
+    BOOL isJailbroken = [[DOEnvironmentManager sharedManager] isJailbroken];
+    BOOL isSupported = [[DOEnvironmentManager sharedManager] isSupported];
+    if(!(!isJailbroken && isSupported)){
+        return;
+    }
     /********** roothide 检查逻辑 **********/
     if(otherJailbreakActived()) {
         UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"Error") 
