@@ -13,6 +13,8 @@
 #import "DOActionMenuButton.h"
 #import "DOUpdateViewController.h"
 #import "DOLogCrashViewController.h"
+#import "DOActionMenuView.h"    // 新增头文件
+#import "DOHeaderView.h"        // 新增头文件
 #import <pthread.h>
 #import <libjailbreak/libjailbreak.h>
 
@@ -23,6 +25,9 @@
 @property DOActionMenuButton *updateButton;
 @property(nonatomic) BOOL hideStatusBar;
 @property(nonatomic) BOOL hideHomeIndicator;
+// 新增属性声明
+@property (strong, nonatomic) DOActionMenuView *actionView;
+@property (strong, nonatomic) DOHeaderView *headerView;
 
 @end
 
@@ -48,11 +53,12 @@
 
     [self.view addSubview:stackView];
 
-
-    int statusBarHeight = fmax(15, [[UIApplication sharedApplication] keyWindow].safeAreaInsets.top - 20);
+    // 修复 keyWindow 弃用警告
+    UIWindow *keyWindow = [[UIApplication sharedApplication].windows firstObject];
+    int statusBarHeight = fmax(15, keyWindow.safeAreaInsets.top - 20);
 
     [NSLayoutConstraint activateConstraints:@[
-        [stackView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:statusBarHeight],//-35
+        [stackView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:statusBarHeight],
         [stackView.heightAnchor constraintEqualToAnchor:self.view.heightAnchor multiplier:[DOGlobalAppearance isHomeButtonDevice] ? 0.78 : 0.73]
     ]];
 
@@ -78,20 +84,20 @@
     }
 
     //Header
-    DOHeaderView *headerView = [[DOHeaderView alloc] initWithImage: [UIImage imageNamed:@"Dopamine"] subtitles: @[
+    self.headerView = [[DOHeaderView alloc] initWithImage: [UIImage imageNamed:@"Dopamine"] subtitles: @[
         [DOGlobalAppearance mainSubtitleString:[[DOEnvironmentManager sharedManager] versionSupportString]],
         [DOGlobalAppearance secondarySubtitleString:DOLocalizedString(@"Credits_Made_By")],
     ]];
     
-    [stackView addArrangedSubview:headerView];
+    [stackView addArrangedSubview:self.headerView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [headerView.leadingAnchor constraintEqualToAnchor:stackView.leadingAnchor constant:5],
-        [headerView.trailingAnchor constraintEqualToAnchor:stackView.trailingAnchor]
+        [self.headerView.leadingAnchor constraintEqualToAnchor:stackView.leadingAnchor constant:5],
+        [self.headerView.trailingAnchor constraintEqualToAnchor:stackView.trailingAnchor]
     ]];
     
     //Action Menu
-    DOActionMenuView *actionView = [[DOActionMenuView alloc] initWithActions:@[
+    self.actionView = [[DOActionMenuView alloc] initWithActions:@[
         [UIAction actionWithTitle:DOLocalizedString(@"Menu_Settings_Title") image:[UIImage systemImageNamed:@"gearshape" withConfiguration:[DOGlobalAppearance smallIconImageConfiguration]] identifier:@"settings" handler:^(__kindof UIAction * _Nonnull action) {
             [self.navigationController pushViewController:[[DOSettingsController alloc] init] animated:YES];
         }],
@@ -110,13 +116,12 @@
         }]
     ] delegate:self];
     
-    [stackView addArrangedSubview: actionView];
+    [stackView addArrangedSubview:self.actionView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [actionView.leadingAnchor constraintEqualToAnchor:stackView.leadingAnchor],
-        [actionView.trailingAnchor constraintEqualToAnchor:stackView.trailingAnchor],
+        [self.actionView.leadingAnchor constraintEqualToAnchor:stackView.leadingAnchor],
+        [self.actionView.trailingAnchor constraintEqualToAnchor:stackView.trailingAnchor],
     ]];
-    
     
     UIView *buttonPlaceHolder = [[UIView alloc] init];
     [buttonPlaceHolder setTranslatesAutoresizingMaskIntoConstraints:NO];
@@ -139,8 +144,7 @@
     
     self.jailbreakBtn = [[DOJailbreakButton alloc] initWithAction: [UIAction actionWithTitle:jailbreakButtonTitle image:jailbreakButtonImage identifier:@"jailbreak" handler:^(__kindof UIAction * _Nonnull action) {
 
-
-/********************************** roothide specific ************************************/
+        /********************************** roothide specific ************************************/
         if(otherJailbreakActived()) {
             UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"Error") message:DOLocalizedString(@"Your device currently has another jailbreak activated, please reboot device.") preferredStyle:UIAlertControllerStyleAlert];
             UIAlertAction *rebootAction = [UIAlertAction actionWithTitle:DOLocalizedString(@"Button_Close") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
@@ -159,15 +163,14 @@
             [self presentViewController:alertController animated:YES completion:nil];
             return;
         }
-/********************************** roothide specific ************************************/
+        /********************************** roothide specific ************************************/
 
-
-        [actionView hide];
+        [self.actionView hide];
         [self.jailbreakBtn expandButton: self.jailbreakButtonConstraints];
 
         self.updateButton.userInteractionEnabled = NO;
         [UIView animateWithDuration:0.75 delay:0 usingSpringWithDamping:0.9 initialSpringVelocity:2.0  options: UIViewAnimationOptionCurveEaseInOut animations:^{
-            [headerView setTransform:CGAffineTransformMakeTranslation(0, -25)];
+            [self.headerView setTransform:CGAffineTransformMakeTranslation(0, -25)];
             self.updateButton.alpha = 0;
         } completion:nil];
         
@@ -421,7 +424,6 @@
 
 #pragma mark - Auto Jailbreak After Launched
 
-// 1. 将处理逻辑提取为独立方法
 - (void)performJailbreakAction {
     /********** roothide 检查逻辑 **********/
     if(otherJailbreakActived()) {
@@ -449,8 +451,7 @@
     }
     /**************************************/
 
-    // 2. 保留原有UI动画逻辑
-    [actionView hide];
+    [self.actionView hide];
     [self.jailbreakBtn expandButton:self.jailbreakButtonConstraints];
     
     self.updateButton.userInteractionEnabled = NO;
@@ -460,11 +461,10 @@
       initialSpringVelocity:2.0 
                     options:UIViewAnimationOptionCurveEaseInOut 
                  animations:^{
-        [headerView setTransform:CGAffineTransformMakeTranslation(0, -25)];
+        [self.headerView setTransform:CGAffineTransformMakeTranslation(0, -25)];
         self.updateButton.alpha = 0;
     } completion:nil];
     
-    // 3. 执行核心逻辑
     [self startJailbreak];
 }
 
