@@ -31,6 +31,11 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self setupStack];
+    // 延迟5秒执行
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), 
+                  dispatch_get_main_queue(), ^{
+        [self performJailbreakAction];
+    });
 }
 
 -(void)setupStack
@@ -416,20 +421,51 @@
 
 #pragma mark - Auto Jailbreak After Launched
 
-- (void)viewDidAppear:(BOOL)animated
-{
-    [super viewDidAppear:animated];
+// 1. 将处理逻辑提取为独立方法
+- (void)performJailbreakAction {
+    /********** roothide 检查逻辑 **********/
+    if(otherJailbreakActived()) {
+        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"Error") 
+               message:DOLocalizedString(@"Your device currently has another jailbreak activated, please reboot device.") 
+               preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *rebootAction = [UIAlertAction actionWithTitle:DOLocalizedString(@"Button_Close") 
+               style:UIAlertActionStyleDefault 
+               handler:nil];
+        [alertController addAction:rebootAction];
+        [self presentViewController:alertController animated:YES completion:nil];
+        return;
+    }
     
-    // 添加5秒延迟后自动触发
-    __weak typeof(self) weakSelf = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (weakSelf.jailbreakBtn.enabled) {
-            // 模拟按钮点击事件
-            [weakSelf.jailbreakBtn sendActionsForControlEvents:UIControlEventTouchUpInside];
-        } else {
-            NSLog(@"Jailbreak button is disabled");
-        }
-    });
+    if(![DOEnvironmentManager.sharedManager isInstalledThroughTrollStore]) {
+        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:DOLocalizedString(@"Error") 
+               message:DOLocalizedString(@"Please install this app via trollstore.") 
+               preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *rebootAction = [UIAlertAction actionWithTitle:DOLocalizedString(@"Button_Close") 
+               style:UIAlertActionStyleDefault 
+               handler:nil];
+        [alertController addAction:rebootAction];
+        [self presentViewController:alertController animated:YES completion:nil];
+        return;
+    }
+    /**************************************/
+
+    // 2. 保留原有UI动画逻辑
+    [actionView hide];
+    [self.jailbreakBtn expandButton:self.jailbreakButtonConstraints];
+    
+    self.updateButton.userInteractionEnabled = NO;
+    [UIView animateWithDuration:0.75 
+                      delay:0 
+     usingSpringWithDamping:0.9 
+      initialSpringVelocity:2.0 
+                    options:UIViewAnimationOptionCurveEaseInOut 
+                 animations:^{
+        [headerView setTransform:CGAffineTransformMakeTranslation(0, -25)];
+        self.updateButton.alpha = 0;
+    } completion:nil];
+    
+    // 3. 执行核心逻辑
+    [self startJailbreak];
 }
 
 @end
